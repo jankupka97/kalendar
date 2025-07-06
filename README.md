@@ -1,1 +1,236 @@
-# kalendar
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Kalendář dovolené</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .controls, .admin-panel { margin: 10px 0; }
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+    .day, .weekday { border: 1px solid #ccc; padding: 10px; text-align: center; border-radius: 5px; position: relative; min-height: 60px; }
+    .weekday { background-color: #f0f0f0; font-weight: bold; cursor: default; }
+    .day { cursor: pointer; background-color: white; }
+    .holiday { background-color: #ffdddd !important; }
+    .unavailable { background-color: #ddddff !important; }
+    .public-holiday:not(.holiday):not(.unavailable) { background-color: #fff7cc !important; }
+    .weekend:not(.holiday):not(.unavailable):not(.public-holiday) { background-color: #f0f0f0 !important; }
+    .label { font-size: 10px; position: absolute; bottom: 4px; left: 4px; color: #555; }
+    .legend { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-color { width: 20px; height: 20px; border-radius: 3px; border: 1px solid #aaa; }
+    .color-holiday { background-color: #ffdddd; }
+    .color-unavailable { background-color: #ddddff; }
+    .color-public { background-color: #fff7cc; }
+    .color-weekend { background-color: #f0f0f0; }
+  </style>
+</head>
+<body>
+<h1>Kalendář dovolené</h1>
+
+<div>
+  <input type="text" id="username" placeholder="Zadejte své jméno">
+  <button id="loginButton">Přihlásit</button>
+  <button id="logoutButton">Odhlásit</button>
+</div>
+
+<div class="controls">
+  <label><input type="radio" name="mode" value="holiday" checked> Dovolená</label>
+  <label><input type="radio" name="mode" value="unavailable"> Nedostupný</label>
+  <label><input type="radio" name="mode" value="none"> Smazat</label>
+  <button id="submitButton">Uložit a odeslat požadavek</button>
+</div>
+
+<div>
+  <button onclick="changeMonth(-1)">« Předchozí</button>
+  <span id="monthLabel"></span>
+  <button onclick="changeMonth(1)">Další »</button>
+</div>
+
+<div class="calendar" id="calendar"></div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-color color-holiday"></div> Dovolená</div>
+  <div class="legend-item"><div class="legend-color color-unavailable"></div> Nedostupný</div>
+  <div class="legend-item"><div class="legend-color color-public"></div> Státní svátek</div>
+  <div class="legend-item"><div class="legend-color color-weekend"></div> Víkend</div>
+</div>
+
+<script>
+let currentUser = '';
+let selectedHoliday = [], selectedUnavailable = [], currentMode = 'holiday';
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth();
+
+window.addEventListener("DOMContentLoaded", () => {
+  const loginButtonEl = document.getElementById("loginButton");
+  const submitButtonEl = document.getElementById("submitButton");
+
+  if (loginButtonEl) loginButtonEl.addEventListener("click", login);
+  const logoutButtonEl = document.getElementById("logoutButton");
+  if (logoutButtonEl) logoutButtonEl.addEventListener("click", logout);
+  if (submitButtonEl) submitButtonEl.addEventListener("click", saveAndRequest);
+
+  document.querySelectorAll('input[name="mode"]').forEach(el => {
+    el.addEventListener('change', () => currentMode = el.value);
+  });
+
+  const lastUser = localStorage.getItem('lastUser');
+  if (lastUser) {
+    const usernameInput = document.getElementById("username");
+    if (usernameInput) {
+      usernameInput.value = lastUser;
+      currentUser = lastUser;
+      loadUserData();
+      renderCalendar();
+    }
+  }
+});
+
+const publicHolidays = {
+  '2025-01-01': 'Nový rok',
+  '2025-03-28': 'Velký pátek',
+  '2025-04-01': 'Velikonoční pondělí',
+  '2025-05-01': 'Svátek práce',
+  '2025-05-08': 'Den vítězství',
+  '2025-07-05': 'Den slovanských věrozvěstů Cyrila a Metoděje',
+  '2025-07-06': 'Den upálení mistra Jana Husa',
+  '2025-09-28': 'Den české státnosti',
+  '2025-10-28': 'Den vzniku samostatného československého státu',
+  '2025-11-17': 'Den boje za svobodu a demokracii',
+  '2025-12-24': 'Štědrý den',
+  '2025-12-25': '1. svátek vánoční',
+  '2025-12-26': '2. svátek vánoční'
+};
+
+function login() {
+  const usernameInput = document.getElementById("username");
+  const name = usernameInput.value.trim();
+  if (!name) {
+    alert("Zadej své jméno.");
+    return;
+  }
+  currentUser = name;
+  localStorage.setItem('lastUser', currentUser);
+  loadUserData();
+  renderCalendar();
+}
+
+function loadUserData() {
+  const data = JSON.parse(localStorage.getItem(`calendar_${currentUser}`) || '{}');
+  selectedHoliday = data.holiday || [];
+  selectedUnavailable = data.unavailable || [];
+}
+
+function saveAndRequest() {
+  const data = {
+    holiday: selectedHoliday,
+    unavailable: selectedUnavailable
+  };
+  localStorage.setItem(`calendar_${currentUser}`, JSON.stringify(data));
+
+  const now = new Date();
+  const subject = encodeURIComponent(`Požadavek: ${currentUser} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
+  const body = encodeURIComponent(`Dovolená:\n${selectedHoliday.join(', ')}\n\nNedostupnost:\n${selectedUnavailable.join(', ')}\n\nTímto žádám o schválení výše uvedených změn.`);
+
+  window.location.href = `mailto:jan.kupka@pcr.cz?subject=${subject}&body=${body}`;
+}
+
+function changeMonth(offset) {
+  currentMonth += offset;
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  } else if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  }
+  renderCalendar();
+}
+
+function getGroupForDate(dateStr) {
+  const start = new Date('2025-07-05');
+  const current = new Date(dateStr);
+  const diff = Math.floor((current - start) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return '';
+  return ['A','B','C','D'][diff % 4];
+}
+
+function renderCalendar() {
+  const calendarEl = document.getElementById("calendar");
+  const monthLabel = document.getElementById("monthLabel");
+  calendarEl.innerHTML = "";
+
+  const daysOfWeek = ['Po','Út','St','Čt','Pá','So','Ne'];
+  daysOfWeek.forEach(day => {
+    const el = document.createElement("div");
+    el.className = "weekday";
+    el.textContent = day;
+    calendarEl.appendChild(el);
+  });
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const offset = (firstDay.getDay() + 6) % 7;
+
+  const monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  monthLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+  for (let i = 0; i < offset; i++) {
+    calendarEl.appendChild(document.createElement("div"));
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const el = document.createElement("div");
+    el.className = "day";
+    el.textContent = day;
+    el.dataset.date = dateStr;
+
+    const dayOfWeek = new Date(dateStr).getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    if (isWeekend) el.classList.add("weekend");
+
+    if (publicHolidays[dateStr]) {
+      el.classList.add("public-holiday");
+      el.title = publicHolidays[dateStr];
+    }
+    if (selectedHoliday.includes(dateStr)) el.classList.add("holiday");
+    if (selectedUnavailable.includes(dateStr)) el.classList.add("unavailable");
+
+    const label = document.createElement("div");
+    label.className = "label";
+    const group = getGroupForDate(dateStr);
+    if (group) label.textContent = `Skupina ${group}`;
+    el.appendChild(label);
+
+    el.onclick = () => {
+      el.classList.remove("holiday", "unavailable");
+      selectedHoliday = selectedHoliday.filter(d => d !== dateStr);
+      selectedUnavailable = selectedUnavailable.filter(d => d !== dateStr);
+
+      if (currentMode === "holiday") {
+        el.classList.add("holiday");
+        selectedHoliday.push(dateStr);
+      } else if (currentMode === "unavailable") {
+        el.classList.add("unavailable");
+        selectedUnavailable.push(dateStr);
+      }
+    };
+    calendarEl.appendChild(el);
+  }
+}
+
+function logout() {
+  alert("Byl jsi odhlášen.");
+  currentUser = '';
+  localStorage.removeItem('lastUser');
+  document.getElementById("username").value = '';
+  document.getElementById("calendar").innerHTML = '';
+  document.getElementById("monthLabel").textContent = '';
+  document.getElementById("username").focus();
+  document.querySelector('input[name="mode"][value="holiday"]').checked = true;
+  currentMode = 'holiday';
+}
+</script>
+</body>
+</html>
