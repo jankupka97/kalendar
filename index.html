@@ -81,7 +81,6 @@ window.addEventListener("DOMContentLoaded", () => {
       usernameInput.value = lastUser;
       currentUser = lastUser;
       loadUserData();
-      renderCalendar();
     }
   }
 });
@@ -112,7 +111,6 @@ function login() {
   currentUser = name;
   localStorage.setItem('lastUser', currentUser);
   loadUserData();
-  renderCalendar();
 }
 
 async function loadUserData() {
@@ -127,6 +125,7 @@ async function loadUserData() {
     selectedHoliday = [];
     selectedUnavailable = [];
   }
+  renderCalendar();
 }
 
 async function saveAndRequest() {
