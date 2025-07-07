@@ -144,19 +144,20 @@ async function saveAndRequest() {
 
     const now = new Date();
     const subject = encodeURIComponent(`Požadavek: ${currentUser} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
-    const body = encodeURIComponent(`Dovolená:
-${selectedHoliday.join(', ')}
-
-Nedostupnost:
-${selectedUnavailable.join(', ')}
-
-Tímto žádám o schválení výše uvedených změn.`);
+    const body = encodeURIComponent(`Dovolená:\n${selectedHoliday.join(', ')}\n\nNedostupnost:\n${selectedUnavailable.join(', ')}\n\nTímto žádám o schválení výše uvedených změn.`);
 
     window.location.href = `mailto:jan.kupka@pcr.cz?subject=${subject}&body=${body}`;
   } catch (error) {
     alert("Nepodařilo se uložit data na server: " + error.message);
   }
-} else if (currentMonth > 11) {
+}
+
+function changeMonth(offset) {
+  currentMonth += offset;
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  } else if (currentMonth > 11) {
     currentMonth = 0;
     currentYear++;
   }
