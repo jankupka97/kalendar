@@ -115,10 +115,18 @@ function login() {
   renderCalendar();
 }
 
-function loadUserData() {
-  const data = JSON.parse(localStorage.getItem(`calendar_${currentUser}`) || '{}');
-  selectedHoliday = data.holiday || [];
-  selectedUnavailable = data.unavailable || [];
+async function loadUserData() {
+  try {
+    const res = await fetch(`/api/loadCalendar?user=${encodeURIComponent(currentUser)}`);
+    if (!res.ok) throw new Error("Chyba při načítání dat ze serveru");
+    const data = await res.json();
+    selectedHoliday = data.holiday || [];
+    selectedUnavailable = data.unavailable || [];
+  } catch (e) {
+    console.warn("Server nevrátil data, používám prázdné hodnoty.", e);
+    selectedHoliday = [];
+    selectedUnavailable = [];
+  }
 }
 
 async function saveAndRequest() {
