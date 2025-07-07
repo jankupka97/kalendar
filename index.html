@@ -94,6 +94,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const usernameInput = document.getElementById("username");
     if (usernameInput) {
       usernameInput.value = lastUser;
+      currentUser = lastUser;
+      loadUserData();
     }
   }
 });
