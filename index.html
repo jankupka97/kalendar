@@ -29,6 +29,7 @@
 
 <div>
   <input type="text" id="username" placeholder="Zadejte své jméno">
+  <input type="password" id="password" placeholder="Zadejte heslo">
   <button id="loginButton">Přihlásit</button>
   <button id="logoutButton">Odhlásit</button>
 </div>
@@ -56,6 +57,11 @@
 </div>
 
 <script>
+const userCredentials = {
+  "jan.kral": "abc123",
+  "kupka": "xyz456"
+};
+
 let currentUser = '';
 let selectedHoliday = [], selectedUnavailable = [], currentMode = 'holiday';
 let currentYear = new Date().getFullYear();
@@ -85,163 +91,28 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-const publicHolidays = {
-  '2025-01-01': 'Nový rok',
-  '2025-03-28': 'Velký pátek',
-  '2025-04-01': 'Velikonoční pondělí',
-  '2025-05-01': 'Svátek práce',
-  '2025-05-08': 'Den vítězství',
-  '2025-07-05': 'Den slovanských věrozvěstů Cyrila a Metoděje',
-  '2025-07-06': 'Den upálení mistra Jana Husa',
-  '2025-09-28': 'Den české státnosti',
-  '2025-10-28': 'Den vzniku samostatného československého státu',
-  '2025-11-17': 'Den boje za svobodu a demokracii',
-  '2025-12-24': 'Štědrý den',
-  '2025-12-25': '1. svátek vánoční',
-  '2025-12-26': '2. svátek vánoční'
-};
-
 function login() {
   const usernameInput = document.getElementById("username");
+  const passwordInput = document.getElementById("password");
   const name = usernameInput.value.trim();
-  if (!name) {
-    alert("Zadej své jméno.");
+  const password = passwordInput.value.trim();
+
+  if (!name || !password) {
+    alert("Zadej své jméno i heslo.");
     return;
   }
+  if (!(name in userCredentials)) {
+    alert("Neexistující uživatel.");
+    return;
+  }
+  if (userCredentials[name] !== password) {
+    alert("Špatné heslo.");
+    return;
+  }
+
   currentUser = name;
   localStorage.setItem('lastUser', currentUser);
   loadUserData();
-}
-
-async function loadUserData() {
-  try {
-    const res = await fetch(`/api/loadCalendar?user=${encodeURIComponent(currentUser)}`);
-    if (!res.ok) throw new Error("Chyba při načítání dat ze serveru");
-    const data = await res.json();
-    selectedHoliday = data.holiday || [];
-    selectedUnavailable = data.unavailable || [];
-  } catch (e) {
-    console.warn("Server nevrátil data, používám prázdné hodnoty.", e);
-    selectedHoliday = [];
-    selectedUnavailable = [];
-  }
-  renderCalendar();
-}
-
-async function saveAndRequest() {
-  const data = {
-    holiday: selectedHoliday,
-    unavailable: selectedUnavailable
-  };
-
-  try {
-    const res = await fetch('/api/saveCalendar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user: currentUser,
-        holiday: selectedHoliday,
-        unavailable: selectedUnavailable
-      })
-    });
-
-    if (!res.ok) throw new Error("Chyba při ukládání na server");
-
-    alert("Požadavek byl úspěšně uložen. Bude vytvořen e-mail s podrobnostmi.");
-
-    const now = new Date();
-    const subject = encodeURIComponent(`Požadavek: ${currentUser} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
-    const body = encodeURIComponent(`Dovolená:\n${selectedHoliday.join(', ')}\n\nNedostupnost:\n${selectedUnavailable.join(', ')}\n\nTímto žádám o schválení výše uvedených změn.`);
-
-    window.location.href = `mailto:jan.kupka@pcr.cz?subject=${subject}&body=${body}`;
-  } catch (error) {
-    alert("Nepodařilo se uložit data na server: " + error.message);
-  }
-}
-
-function changeMonth(offset) {
-  currentMonth += offset;
-  if (currentMonth < 0) {
-    currentMonth = 11;
-    currentYear--;
-  } else if (currentMonth > 11) {
-    currentMonth = 0;
-    currentYear++;
-  }
-  renderCalendar();
-}
-
-function getGroupForDate(dateStr) {
-  const start = new Date('2025-07-05');
-  const current = new Date(dateStr);
-  const diff = Math.floor((current - start) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return '';
-  return ['A','B','C','D'][diff % 4];
-}
-
-function renderCalendar() {
-  const calendarEl = document.getElementById("calendar");
-  const monthLabel = document.getElementById("monthLabel");
-  calendarEl.innerHTML = "";
-
-  const daysOfWeek = ['Po','Út','St','Čt','Pá','So','Ne'];
-  daysOfWeek.forEach(day => {
-    const el = document.createElement("div");
-    el.className = "weekday";
-    el.textContent = day;
-    calendarEl.appendChild(el);
-  });
-
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const firstDay = new Date(currentYear, currentMonth, 1);
-  const offset = (firstDay.getDay() + 6) % 7;
-
-  const monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-  monthLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
-
-  for (let i = 0; i < offset; i++) {
-    calendarEl.appendChild(document.createElement("div"));
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const el = document.createElement("div");
-    el.className = "day";
-    el.textContent = day;
-    el.dataset.date = dateStr;
-
-    const dayOfWeek = new Date(dateStr).getDay();
-    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-    if (isWeekend) el.classList.add("weekend");
-
-    if (publicHolidays[dateStr]) {
-      el.classList.add("public-holiday");
-      el.title = publicHolidays[dateStr];
-    }
-    if (selectedHoliday.includes(dateStr)) el.classList.add("holiday");
-    if (selectedUnavailable.includes(dateStr)) el.classList.add("unavailable");
-
-    const label = document.createElement("div");
-    label.className = "label";
-    const group = getGroupForDate(dateStr);
-    if (group) label.textContent = `Skupina ${group}`;
-    el.appendChild(label);
-
-    el.onclick = () => {
-      el.classList.remove("holiday", "unavailable");
-      selectedHoliday = selectedHoliday.filter(d => d !== dateStr);
-      selectedUnavailable = selectedUnavailable.filter(d => d !== dateStr);
-
-      if (currentMode === "holiday") {
-        el.classList.add("holiday");
-        selectedHoliday.push(dateStr);
-      } else if (currentMode === "unavailable") {
-        el.classList.add("unavailable");
-        selectedUnavailable.push(dateStr);
-      }
-    };
-    calendarEl.appendChild(el);
-  }
 }
 
 function logout() {
@@ -249,11 +120,26 @@ function logout() {
   currentUser = '';
   localStorage.removeItem('lastUser');
   document.getElementById("username").value = '';
+  document.getElementById("password").value = '';
   document.getElementById("calendar").innerHTML = '';
   document.getElementById("monthLabel").textContent = '';
   document.getElementById("username").focus();
   document.querySelector('input[name="mode"][value="holiday"]').checked = true;
   currentMode = 'holiday';
+  selectedHoliday = [];
+  selectedUnavailable = [];
+}
+
+function saveAndRequest() {
+  if (!currentUser) {
+    alert("Nejprve se přihlas.");
+    return;
+  }
+  const body = `Dovolené: ${selectedHoliday.join(', ')}\nNedostupné: ${selectedUnavailable.join(', ')}`;
+  const subject = `${currentUser} – požadavek – ${new Date().toLocaleString('cs-CZ')}`;
+  const mailto = `mailto:jan.kupka@pcr.cz?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  alert("Data byla uložena. Bude vygenerován e-mail.");
+  window.location.href = mailto;
 }
 </script>
 </body>
