@@ -121,18 +121,33 @@ function loadUserData() {
   selectedUnavailable = data.unavailable || [];
 }
 
-function saveAndRequest() {
+async function saveAndRequest() {
   const data = {
     holiday: selectedHoliday,
     unavailable: selectedUnavailable
   };
-  localStorage.setItem(`calendar_${currentUser}`, JSON.stringify(data));
 
-  const now = new Date();
-  const subject = encodeURIComponent(`Požadavek: ${currentUser} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
-  const body = encodeURIComponent(`Dovolená:\n${selectedHoliday.join(', ')}\n\nNedostupnost:\n${selectedUnavailable.join(', ')}\n\nTímto žádám o schválení výše uvedených změn.`);
+  try {
+    const res = await fetch('/api/saveCalendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user: currentUser,
+        holiday: selectedHoliday,
+        unavailable: selectedUnavailable
+      })
+    });
 
-  window.location.href = `mailto:jan.kupka@pcr.cz?subject=${subject}&body=${body}`;
+    if (!res.ok) throw new Error("Chyba při ukládání na server");
+
+    const now = new Date();
+    const subject = encodeURIComponent(`Požadavek: ${currentUser} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
+    const body = encodeURIComponent(`Dovolená:\n${selectedHoliday.join(', ')}\n\nNedostupnost:\n${selectedUnavailable.join(', ')}\n\nTímto žádám o schválení výše uvedených změn.`);
+
+    window.location.href = `mailto:jan.kupka@pcr.cz?subject=${subject}&body=${body}`;
+  } catch (error) {
+    alert("Nepodařilo se uložit data na server: " + error.message);
+  }
 }
 
 function changeMonth(offset) {
