@@ -91,9 +91,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const lastUser = localStorage.getItem('lastUser');
   if (lastUser) {
-    document.getElementById("username").value = lastUser;
-    currentUser = lastUser;
-    loadUserData();
+    const usernameInput = document.getElementById("username");
+    if (usernameInput) {
+      usernameInput.value = lastUser;
+    }
+  }
   }
 });
 
@@ -102,10 +104,14 @@ function login() {
   const passwordInput = document.getElementById("password");
   const name = usernameInput.value.trim();
   const password = passwordInput.value.trim();
+
   if (!name || !password) return alert("Zadej své jméno i heslo.");
   if (!(name in userCredentials)) return alert("Neexistující uživatel.");
   if (userCredentials[name] !== password) return alert("Špatné heslo.");
+
   currentUser = name;
+  localStorage.setItem('lastUser', currentUser);
+  loadUserData();
   localStorage.setItem('lastUser', currentUser);
   loadUserData();
 }
