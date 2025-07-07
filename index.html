@@ -131,11 +131,45 @@ function logout() {
   selectedUnavailable = [];
 }
 
-function saveAndRequest() {
+async function saveAndRequest() {
   if (!currentUser) {
     alert("Nejprve se přihlas.");
     return;
   }
+
+  console.log("Uživatel:", currentUser);
+  console.log("Dovolené dny:", selectedHoliday);
+  console.log("Nedostupné dny:", selectedUnavailable);
+
+  try {
+    const response = await fetch('/api/saveCalendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user: currentUser,
+        holiday: selectedHoliday,
+        unavailable: selectedUnavailable
+      })
+    });
+
+    if (!response.ok) throw new Error("Chyba při ukládání dat na server");
+
+    alert("Data byla uložena. Bude vygenerován e-mail.");
+
+    const body = `Dovolené: ${selectedHoliday.join(', ')}
+Nedostupné: ${selectedUnavailable.join(', ')}`;
+    const subject = `${currentUser} – požadavek – ${new Date().toLocaleString('cs-CZ')}`;
+    const mailto = `mailto:jan.kupka@pcr.cz?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    setTimeout(() => {
+      window.location.href = mailto;
+    }, 500);
+
+  } catch (err) {
+    console.error("Chyba při ukládání:", err);
+    alert("Nepodařilo se uložit data na server.");
+  }
+}
 
   const body = `Dovolené: ${selectedHoliday.join(', ')}\nNedostupné: ${selectedUnavailable.join(', ')}`;
   const subject = `${currentUser} – požadavek – ${new Date().toLocaleString('cs-CZ')}`;
