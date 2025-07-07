@@ -82,13 +82,9 @@ const publicHolidays = {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  const loginButtonEl = document.getElementById("loginButton");
-  const submitButtonEl = document.getElementById("submitButton");
-
-  if (loginButtonEl) loginButtonEl.addEventListener("click", login);
-  const logoutButtonEl = document.getElementById("logoutButton");
-  if (logoutButtonEl) logoutButtonEl.addEventListener("click", logout);
-  if (submitButtonEl) submitButtonEl.addEventListener("click", saveAndRequest);
+  document.getElementById("loginButton").addEventListener("click", login);
+  document.getElementById("logoutButton").addEventListener("click", logout);
+  document.getElementById("submitButton").addEventListener("click", saveAndRequest);
 
   document.querySelectorAll('input[name="mode"]').forEach(el => {
     el.addEventListener('change', () => currentMode = el.value);
@@ -111,18 +107,9 @@ function login() {
   const name = usernameInput.value.trim();
   const password = passwordInput.value.trim();
 
-  if (!name || !password) {
-    alert("Zadej své jméno i heslo.");
-    return;
-  }
-  if (!(name in userCredentials)) {
-    alert("Neexistující uživatel.");
-    return;
-  }
-  if (userCredentials[name] !== password) {
-    alert("Špatné heslo.");
-    return;
-  }
+  if (!name || !password) return alert("Zadej své jméno i heslo.");
+  if (!(name in userCredentials)) return alert("Neexistující uživatel.");
+  if (userCredentials[name] !== password) return alert("Špatné heslo.");
 
   currentUser = name;
   localStorage.setItem('lastUser', currentUser);
@@ -149,11 +136,10 @@ function saveAndRequest() {
     alert("Nejprve se přihlas.");
     return;
   }
+
   const body = `Dovolené: ${selectedHoliday.join(', ')}\nNedostupné: ${selectedUnavailable.join(', ')}`;
   const subject = `${currentUser} – požadavek – ${new Date().toLocaleString('cs-CZ')}`;
   const mailto = `mailto:jan.kupka@pcr.cz?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  alert("Data byla uložena. Bude vygenerován e-mail.");
-  window.location.href = mailto;
 
   fetch('/api/saveCalendar', {
     method: 'POST',
@@ -163,7 +149,16 @@ function saveAndRequest() {
       holiday: selectedHoliday,
       unavailable: selectedUnavailable
     })
-  }).catch(err => console.error("Chyba při ukládání na server:", err));
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Chyba při ukládání dat");
+    alert("Data byla uložena. Bude vygenerován e-mail.");
+    setTimeout(() => { window.location.href = mailto; }, 500);
+  })
+  .catch(err => {
+    console.error("Chyba při ukládání na server:", err);
+    alert("Nepodařilo se uložit data na server.");
+  });
 }
 
 async function loadUserData() {
@@ -185,7 +180,6 @@ function renderCalendar() {
   const daysOfWeek = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
   const calendar = document.getElementById("calendar");
   calendar.innerHTML = '';
-
   daysOfWeek.forEach(day => {
     const weekday = document.createElement('div');
     weekday.className = 'weekday';
